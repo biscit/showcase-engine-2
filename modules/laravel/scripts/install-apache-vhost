@@ -1,0 +1,23 @@
+#!/bin/bash
+
+info "$(basename "${BASH_SOURCE[0]}")" "Installing apache vhost..."
+
+# Define the logs path in the project
+APACHE_LOG_DIR="$(pwd)/storage/logs"
+
+# Create the logs directory if it doesn't exist
+if [ ! -d "$APACHE_LOG_DIR" ]; then
+    mkdir -p "$APACHE_LOG_DIR"
+fi
+
+# permissions for apache2
+sudo chgrp www-data "$APACHE_LOG_DIR"
+sudo chmod g+w "$APACHE_LOG_DIR"
+
+if source "$SHARED_SCRIPTS_DIR/create-apache-vhost"; then
+    message="Apache Vhost for $PROJECT_NAME configurated"
+    return 0
+else
+    message="Failed to install vhost"
+    return 1
+fi

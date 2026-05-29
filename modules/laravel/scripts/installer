@@ -1,0 +1,33 @@
+#!/bin/bash
+
+info "$(basename "${BASH_SOURCE[0]}")" "Installing laravel..."
+
+mapfile -t installation_flags < $FRAMEWORK_LISTS_DIR/default-flags
+
+if [ ! -d "$PROJECT_NAME" ]; then
+    gum spin --spinner dot --title "    Installing Laravel project '$PROJECT_NAME'..." -- \
+        bash -c "laravel new '$PROJECT_NAME' ${installation_flags[*]} > /tmp/laravel_install.log 2>&1"
+else
+    message="Laravel project '$PROJECT_NAME' already exists"
+    unset SCRIPT_NAME
+    return 0
+fi
+
+# check if /tmp/laravel_install.log contains database errors
+if [ -s "/tmp/laravel_install.log" ]; then
+    if grep -qiE "SQLSTATE" /tmp/laravel_install.log; then
+        echo ""
+        # show database error in terminal
+        gum style --foreground 196 --border normal --padding "0 1" "database error in installation log :"
+        echo ""
+        grep -iE -C 3 "SQLSTATE" /tmp/laravel_install.log | gum format
+        echo ""
+        gum style --foreground 76 --border normal --padding "0 1" "Laravel is trying to connect to the database as root," \
+          "but root has no access to the database.  Database credentials" \
+          "are now added to the .env file, and migrations are run manually"
+    fi
+fi
+
+message="Laravel installation succeeded"
+
+return 0

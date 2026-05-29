@@ -1,0 +1,39 @@
+#!/bin/bash
+
+info "$(basename "${BASH_SOURCE[0]}")" "Installing additional packages..."
+
+if [ -f /tmp/additional_packages ]; then
+    while IFS= read -r line <&3; do
+        read -r pkg opt <<< "$line"
+
+        gum spin --spinner dot --title "Installing $pkg..." -- \
+            composer require "$pkg" $opt --with-all-dependencies --no-interaction
+
+        if [ $? -eq 0 ]; then
+            echo "    $pkg is installed."
+            [[ -n "$opt" ]] && package="$pkg $opt" || package="$pkg"
+            
+            pkg_kebab=$(echo "$pkg" | tr '/' '-')
+            make -f "$MAKEFILE_PKG" $pkg_kebab
+            
+            FILE_ENTRY="$PROJECT_NAME:$package"
+            echo "$FILE_ENTRY" >> "$PACKAGES_HISTORY_FILE"
+        else
+            echo "    failed to install $pkg. Check composer.json."
+            add_to_do "package $pkg was not installed, check composer.json"
+        fi
+
+        FILE_ENTRY=""
+
+    done 3< /tmp/additional_packages
+else
+    # return 1 because no packages were selected and thus installed, and this has to be logged in the .installed-apps file !!
+    message="No extra packages were selected"
+    return 1
+fi
+
+rm /tmp/additional_packages
+
+message="Additional packages are installed"
+
+return 0

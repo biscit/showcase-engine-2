@@ -1,0 +1,21 @@
+#!/bin/bash
+
+APP_NAME=$(echo "$PROJECT_NAME" | sed 's/[-_]/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)} 1')
+
+info "$(basename "${BASH_SOURCE[0]}")" "Configuring app environment..."
+
+cd "/var/www/$PROJECT_NAME"
+
+if [ -f .env ]; then
+    sed -i "s|^APP_NAME=.*|APP_NAME=\"$APP_NAME\"|" .env
+    sed -i "s|^APP_URL=.*|APP_URL=http://$PROJECT_NAME.local|" .env
+    sed -i "s|^SESSION_DOMAIN=.*|SESSION_DOMAIN=.$PROJECT_NAME.local|" .env
+
+    message="Configured app environment"
+else
+    message="Failed to configure app environment"
+    add_to_do "failed to configure app environment : .env file not found"
+    return 1
+fi
+
+return 0

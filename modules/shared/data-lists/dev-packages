@@ -1,0 +1,8 @@
+# Testing & Dev
+
+#spatie/laravel-ray --dev
+fruitcake/laravel-debugbar --dev
+barryvdh/laravel-ide-helper --dev
+#nunomaduro/larastan --dev
+laravel/breeze --dev
+livewire/livewire-devtools --dev

@@ -1,0 +1,23 @@
+#!/bin/bash
+
+filter_new_packages "$PACKAGES_HISTORY_FILE" "$SHARED_LISTS_DIR/dev-packages" "$PROJECT_NAME" > /tmp/filtered_dev_packages
+filter_new_packages "$PACKAGES_HISTORY_FILE" "$SHARED_LISTS_DIR/production-packages" "$PROJECT_NAME" > /tmp/filtered_prod_packages
+
+# select additional dev packages
+if [ -s /tmp/filtered_dev_packages ]; then
+    DEV_PACKAGES=$(multi_select "Which dev packages would you like to add ?" /tmp/filtered_dev_packages)
+    [[ -n "$DEV_PACKAGES" ]] && printf '%s\n' "$DEV_PACKAGES" >> /tmp/additional_packages
+fi
+
+# select additional production packages
+if [ -s /tmp/filtered_prod_packages ]; then
+    PROD_PACKAGES=$(multi_select "Which production packages would you like to add ?" /tmp/filtered_prod_packages)
+    [[ -n "$PROD_PACKAGES" ]] && printf '%s\n' "$PROD_PACKAGES" >> /tmp/additional_packages
+fi
+
+rm /tmp/filtered_dev_packages
+rm /tmp/filtered_prod_packages
+unset DEV_PACKAGES
+unset PROD_PACKAGES
+
+return 0

@@ -1,0 +1,6 @@
+# production packages
+
+guzzlehttp/guzzle
+spatie/laravel-permission
+#predis/predis
+laravel/sanctum

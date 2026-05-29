@@ -1,0 +1,36 @@
+#!/bin/bash
+
+case $SELECTED_FRAMEWORK in
+    laravel)
+        if ! command -v laravel &> /dev/null; then
+            # Check composer bin
+            COMPOSER_BIN=$(composer global config bin-dir --absolute 2>/dev/null)
+            if [ ! -f "$COMPOSER_BIN/laravel" ]; then
+                error "Laravel installer is missing."
+                return 1
+            fi
+        fi
+        ;;
+
+    symfony)
+        if ! command -v symfony &> /dev/null; then
+            # Check composer bin
+            COMPOSER_BIN=$(composer global config bin-dir --absolute 2>/dev/null)
+            if [ ! -f "$COMPOSER_BIN/symfony" ]; then
+                error "Under construction. Symfony installer is missing"
+                return 1
+            fi
+        fi
+        ;;
+
+    drupal)
+        if ! command -v ddev &> /dev/null; then
+            error "Under construction. DDEV is missing"
+            return 1
+        fi
+        ;;
+
+    *)
+esac
+
+return 0

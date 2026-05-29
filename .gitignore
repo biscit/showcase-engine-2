@@ -1,0 +1,8 @@
+# folders
+.vscode
+bin
+lib
+
+# files
+.installed_apps.log
+.installed_packages.log

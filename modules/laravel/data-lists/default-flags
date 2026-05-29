@@ -1,0 +1,5 @@
+--livewire
+--database=mysql
+--pest
+--npm
+--no-interaction

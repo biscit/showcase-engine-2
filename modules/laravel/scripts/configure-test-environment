@@ -1,0 +1,49 @@
+#!/bin/bash
+
+info "$(basename "${BASH_SOURCE[0]}")" "Configuring test environment..."
+
+# copy app_key from .env file
+CURRENT_APP_KEY=$(grep "APP_KEY=" .env | cut -d '=' -f2)
+
+# create the .env.testing file
+cat <<EOF > .env.testing
+APP_ENV=testing
+
+APP_KEY=
+
+$(echo "$TEST_DB_SNIPPET")
+
+CACHE_DRIVER=array
+FILESYSTEM_DISK=local
+SESSION_DRIVER=array
+SESSION_LIFETIME=120
+
+QUEUE_CONNECTION=sync
+MAIL_MAILER=array
+
+BCRYPT_ROUNDS=4
+EOF
+
+# copy .env.testing to .env.testing.example
+cp .env.testing .env.testing.example
+
+# add app_key to .env.testing
+sed -i "s|^APP_KEY=.*|APP_KEY=$CURRENT_APP_KEY|" .env.testing
+
+# check syntax in Pest.php
+if [ -f "tests/Pest.php" ]; then
+    if grep -q "// ->use(RefreshDatabase::class)" tests/Pest.php; then
+        sed -i "s|// ->use(RefreshDatabase::class)|   ->use(RefreshDatabase::class)|" tests/Pest.php
+    fi
+    php artisan config:clear
+    php artisan migrate --force --env=testing
+
+    message="configured test environment"
+
+    return 0
+else
+    add_to_do "check for tests/Pest.php file as file was not found"
+    message="file tests/Pest.php was not found"
+    return 1
+fi
+

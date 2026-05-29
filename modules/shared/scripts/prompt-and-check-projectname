@@ -1,0 +1,37 @@
+#!/bin/bash
+
+while true; do
+    # loop until $RAW_PROJECT_NAME or user leaves
+    RAW_PROJECT_NAME=$(gum input --padding "0 1" --placeholder "Name of project is obligated..." --header "Name of your project ?")
+    # stop the script when user uses CTRL+C
+    [ $? -gt 0 ] && exit 1
+    [ -z "$RAW_PROJECT_NAME" ] && continue
+
+    # sanitize $RAW_PROJECT_NAME
+    PROJECT_NAME=$(echo "$RAW_PROJECT_NAME" | tr ' ' '-' | tr '_' '-' | tr -dc '[:alnum:]-\n\r' | tr '[:upper:]' '[:lower:]')
+
+    info "$(basename "${BASH_SOURCE[0]}")" "Checking for project '$PROJECT_NAME'..."
+
+    # check if folder exists in /var/www
+    if [ -d "/var/www/$PROJECT_NAME" ]; then
+        warning "$(basename "${BASH_SOURCE[0]}")" "project '$PROJECT_NAME' already exists. laravel installer will skip execution"
+        if gum confirm --affirmative "Start update" --negative "Choose new project name" \
+            "Continue the installation of project '$PROJECT_NAME' despite warnings above ? This will trigger an update"; then
+            RE_RUN="true"
+            break
+        else
+            RAW_PROJECT_NAME=""
+            continue 
+        fi
+    else
+        source "$SHARED_SCRIPTS_DIR/init-project-variables.sh"
+        break
+    fi
+done
+
+info "$(basename "${BASH_SOURCE[0]}")" "Proceeding with the installation of project '$PROJECT_NAME'"
+
+unset RAW_PROJECT_NAME
+unset PROJECT_NAME_UNDERSCORED
+
+return 0

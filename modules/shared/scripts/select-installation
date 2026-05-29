@@ -1,0 +1,22 @@
+#!/bin/bash
+
+FRAMEWORK=""
+SELECTED_FRAMEWORK=""
+
+# Get the names of the modules directories except 'shared'
+FRAMEWORK_OPTIONS=($(ls -d $MODULES_DIR/*/ | xargs -n 1 basename | grep -v "shared"))
+
+
+while [[ -z "$FRAMEWORK"  ]]; do
+    SELECTED_FRAMEWORK=$(gum choose --header "Which framework (or CMS) do you want to install ?" "${FRAMEWORK_OPTIONS[@]}")
+    
+    if source $SHARED_SCRIPTS_DIR/check-framework-installation > /dev/null; then
+        FRAMEWORK="$SELECTED_FRAMEWORK"
+    else
+        FRAMEWORK_OPTIONS=(${FRAMEWORK_OPTIONS[@]/*$SELECTED_FRAMEWORK*/})
+    fi
+done
+
+unset SELECTED_FRAMEWORK
+
+return 0

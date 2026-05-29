@@ -1,0 +1,17 @@
+#!/bin/bash
+
+info "$(basename "${BASH_SOURCE[0]}")" "Configuring logging..."
+
+if [ -f .env ]; then
+    sed -i "s/^LOG_CHANNEL=.*/LOG_CHANNEL=daily/" .env
+    sed -i "s/^LOG_LEVEL=.*/LOG_LEVEL=debug/" .env
+    sed -i "/^LOG_DAILY_DAYS=/d" .env
+    sed -i "/^LOG_LEVEL=.*/a LOG_DAILY_DAYS=7" .env
+
+    message="Configured logging"
+    return 0
+else
+    add_to_do "Failed to configure logging : .env file not found"
+    message="Failed to configure logging"
+    return 1
+fi

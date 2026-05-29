@@ -1,0 +1,23 @@
+#!/bin/bash
+
+info "$(basename "${BASH_SOURCE[0]}")" "Configuring .env with database credentials..."
+
+if [ -f .env ]; then
+    sed -i "s|^DB_DATABASE=.*|DB_DATABASE=$DB_NAME|" .env
+    sed -i "s|^DB_USERNAME=.*|DB_USERNAME=$DB_USER|" .env
+    sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=$DB_PASSWORD|" .env
+    sed -i "s|^DB_CONNECTION=.*|DB_CONNECTION=mysql|" .env
+    sed -i "s|^DB_HOST=.*|DB_HOST=127.0.0.1|" .env
+    sed -i "s|^DB_PORT=.*|DB_PORT=3306|" .env
+
+    php artisan config:clear
+    php artisan migrate --force
+
+    message="database credentials are saved to config file"
+    return 0
+else
+    add_to_do ".env not found. Database credentials are not configured"
+    message="failed to save database credentials to config file"
+    return 1
+fi
+

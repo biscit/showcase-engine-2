@@ -1,0 +1,19 @@
+#!/bin/bash
+
+declare -A GIT_PARAMS
+
+if gum confirm --padding "0 1" "Do you want to push your project to Github when the installation succeeds ?"; then
+    GIT_PARAMS[permission]='true'
+    
+    VISIBILITY=$(gum choose --header "Choose the visibility of your project :" "private" "public")
+    GIT_PARAMS[visibility]=$VISIBILITY
+    
+    info "$(basename "${BASH_SOURCE[0]}")" "The 'main' branch will be used to push the project to GitHub, if the project doesn't exist yet"
+else
+    GIT_PARAMS[permission]='false'
+    info "$(basename "${BASH_SOURCE[0]}")" "The project will not be pushed to GitHub"
+fi
+
+unset VISIBILITY
+
+return 0

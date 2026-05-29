@@ -1,0 +1,29 @@
+#!/bin/bash
+
+info "$(basename "${BASH_SOURCE[0]}")" "Setting permissions..."
+
+USER=$USER
+
+sudo chmod 1777 /tmp /var/tmp 2>/dev/null
+# 1. Eigenaar en groep goedzetten
+sudo chown -R "$USER:www-data" "$ROOT_DIR"
+
+# 2. Mappen: 775 en SGID bit (drwxrwsr-x)
+# De 'X' zorgt ervoor dat mappen wel het execute-bit krijgen (nodig om erin te gaan)
+sudo find "$ROOT_DIR" -type d -exec chmod 2775 {} +
+
+# 3. Bestanden: Standaard naar 664 (-rw-rw-r--)
+sudo find "$ROOT_DIR" -type f -exec chmod 664 {} +
+
+# 4. Uitzondering: Maak scripts en de orchestrator weer uitvoerbaar
+# We zoeken naar .sh bestanden OF specifieke namen zoals setup-dev
+sudo find "$ROOT_DIR" -type f \( -name "*.sh" -o -name "setup-dev" -o -path "*/bin/*" \) -exec chmod +x {} +
+
+sudo chmod -R 777 storage bootstrap/cache
+
+message="Permissions are set (with executable bits preserved for scripts)"
+
+return 0
+
+
+sudo chmod -R 777 storage bootstrap/cache

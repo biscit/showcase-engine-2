@@ -1,0 +1,14 @@
+#!/bin/bash
+
+info "$(basename "${BASH_SOURCE[0]}")" "Creating README.md file..."
+
+cat <<EOF > README.md
+![Tests Status](https://github.com/biscit/$PROJECT_NAME/actions/workflows/tests.yml/badge.svg)
+
+# $PROJECT_NAME
+
+EOF
+
+message="README.md file created"
+
+return 0

@@ -1,0 +1,31 @@
+#!/bin/bash
+
+info "$(basename "${BASH_SOURCE[0]}")" "Configuring CI..."
+
+# Remove linter
+if [ -f ".github/workflows/lint.yml" ]; then
+    rm .github/workflows/lint.yml
+    echo "    removed lint.yml"
+fi
+
+# Adjust tests.yml
+if [ -f ".github/workflows/tests.yml" ]; then
+    # use .env.testing.example
+    sed -i 's/cp .env.example .env/cp .env.testing.example .env/' .github/workflows/tests.yml
+    
+    # Add sqlite variables
+    if ! grep -q "DB_CONNECTION: sqlite" ".github/workflows/tests.yml"; then
+        sed -i '/run: .\/vendor\/bin\/pest/i \        env:\n          DB_CONNECTION: sqlite\n          DB_DATABASE: ":memory:"' .github/workflows/tests.yml
+    fi
+
+    echo "    tests.yml optimized for use of SQLite in-memory."
+    message="Project is ci ready"
+else
+    echo "    Warning: .github/workflows/tests.yml not found!"
+    add_to_do ".github/workflows/tests.yml not found, manually create tests.yml"
+    message="Failed to set project ci ready"
+    return 1
+fi
+
+return 0
+

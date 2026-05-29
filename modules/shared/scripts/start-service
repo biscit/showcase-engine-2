@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# check if service is running
+if ! service_manager status "$service" > /dev/null; then
+   gum spin --spinner dot --title "Starting $service service..." -- \
+        bash -c "service_manager start '$service'" \
+        sleep 5
+fi
+
+# final service control
+if service_manager status "$service" > /dev/null; then
+    message="$service is running"
+else
+    message="could not start up $service"
+    exit 1
+fi
+
+return 0

@@ -1,0 +1,27 @@
+#!/bin/bash
+
+rerun_scripts=("$SHARED_SCRIPTS_DIR/install-additional-packages")
+
+# get the scripts that failed to install
+rerun_scripts+=($(grep "^$PROJECT_NAME:" "$APP_HISTORY_FILE" | grep ":n$" | cut -d':' -f3))
+
+# navigate to the root of the project
+cd "/var/www/$PROJECT_NAME"
+
+# loop over and install
+for script_path in "${rerun_scripts[@]}"; do
+    script_name=$(basename $script_path)
+    info "$(basename "${BASH_SOURCE[0]}" .sh)" "Update flow started for project '$PROJECT_NAME' : $script_name"
+    
+    run_step source "$script_path"
+    shift
+done
+
+MINUTES=$(( SECONDS / 60 ))
+SECONDS=$(( SECONDS % 60 ))
+
+info "$(basename "${BASH_SOURCE[0]}" .sh)" "This script ran for $MINUTES minutes and $SECONDS seconds"
+info "$(basename "${BASH_SOURCE[0]}" .sh)" "Update flow for project '$PROJECT_NAME' is done"
+
+exit 0
+

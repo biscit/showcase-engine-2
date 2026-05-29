@@ -1,0 +1,22 @@
+#!/bin/bash
+
+if "${GIT_PARAMS[permission]}"; then
+    info "$(basename "${BASH_SOURCE[0]}")" "Pushing project to GitHub..."
+
+    VISIBILITY="${GIT_PARAMS[visibility]}"
+
+    # Git initialisation
+    git init
+    git add .
+    git commit -m "initial commit of $PROJECT_NAME" --quiet
+
+    gum spin --spinner dot --title "Creating and pushing repo '$PROJECT_NAME' to github..." -- \
+        gh repo create "$PROJECT_NAME" --$VISIBILITY --source=. --remote=origin --push
+
+    message="Project '$PROJECT_NAME' pushed to github !"
+    return 0
+else
+    message="No permission to push project to GitHub"
+    return 1
+fi 
+

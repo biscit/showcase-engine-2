@@ -1,0 +1,38 @@
+#!/bin/bash
+
+PHP_MODULES=("pdo_mysql" "bcmath" "xml" "mbstring" "tokenizer" "json" "curl")
+
+MISSING=()
+
+for PHP_MOD in "${PHP_MODULES[@]}"; do
+    # Check CLI
+    if ! php -m | grep -qi "$PHP_MOD"; then
+        MISSING+=("CLI: $PHP_MOD")
+    fi
+    
+    # Check Apache
+    echo "<?php echo extension_loaded('$PHP_MOD') ? '1' : '0';" | sudo tee /var/www/html/ext_check.php > /dev/null
+    WEB_RESULT=$(curl -s http://127.0.0.1/ext_check.php)
+    
+    if [ "$WEB_RESULT" != "1" ]; then
+        MISSING+=("WEB: $PHP_MOD")
+    fi
+done
+
+sudo rm /var/www/html/ext_check.php > /dev/null
+
+# Result
+if [ ${#MISSING[@]} -eq 0 ]; then
+    message="Modules checked and loaded in CLI en Apache2 : ${PHP_MODULES[*]}"
+else
+    message="Following extensions are missing :"
+    for m in "${MISSING[@]}"; do
+        echo "    - $m"
+    done
+    
+    echo ""
+    echo "    Install missing extensions with : sudo apt install php-<name>"
+    exit 1
+fi
+
+return 0

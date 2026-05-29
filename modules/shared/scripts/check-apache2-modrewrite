@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# source "$SCRIPT_DIR/../lib/styles.sh"
+# source "$SCRIPT_DIR/../lib/functions.sh"
+
+# Check if mod_rewrite is running
+if apache2ctl -M | grep -q 'rewrite_module'; then
+    message="Apache2 rewrite_module is running."
+else
+    # Activate
+    sudo a2enmod rewrite > /dev/null 2>&1
+    
+    # Restart apache2
+    if sudo apache2ctl configtest > /dev/null 2>&1; then
+        service_manager restart apache2 > /dev/null 2>&1
+        message="rewrite_module activated and Apache2 restarted."
+    else
+        message="Apache2 configuration is faulty. Service is not restarted."
+        return 1
+    fi
+fi
+
+return 0

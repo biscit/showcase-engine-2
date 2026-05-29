@@ -1,0 +1,145 @@
+#!/bin/bash
+
+# runtime-only privilege escalation and clean-up
+echo "$USER ALL=(ALL:ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/tmp-install-permissions > /dev/null
+sudo chmod 0440 /etc/sudoers.d/tmp-install-permissions
+trap 'stty sane; sudo rm -f /etc/sudoers.d/tmp-install-permissions; [[ -n "$LOOP_PID" ]] && kill "$LOOP_PID" 2>/dev/null' EXIT INT
+
+# keep the sudo session alive as long as the script is running
+sudo -v
+while true; do sudo -n true; sleep 60; kill -0 "$$" || exit; done 2>/dev/null &
+LOOP_PID=$!
+
+# remove temporary files used in this installation
+rm -f /tmp/setup_todo_list
+rm -f /tmp/setup_checklist
+rm -f /tmp/laravel_install.log
+rm -f /tmp/additional_packages
+
+######################################################## start configuration and environment checks
+
+# path configuration for shared utilities
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MODULES_DIR="$ROOT_DIR/modules"
+SHARED_SCRIPTS_DIR="$ROOT_DIR/modules/shared/scripts"
+SHARED_LISTS_DIR="$ROOT_DIR/modules/shared/data-lists"
+SHARED_FUNCTIONS_DIR="$ROOT_DIR/modules/shared/lib/functions"
+SHARED_SNIPPETS_DIR="$ROOT_DIR/modules/shared/lib/snippets"
+PACKAGES_HISTORY_FILE="$ROOT_DIR/.installed_packages.log"
+APP_HISTORY_FILE="$ROOT_DIR/.installed_apps.log"
+MAKEFILE_PKG="$ROOT_DIR/Makefile.packages"
+
+source "$SHARED_FUNCTIONS_DIR/common.sh"
+source "$SHARED_FUNCTIONS_DIR/messages.sh"
+
+# create a file in the root of the project to store extra packages history per installed app
+[[ ! -f "$PACKAGES_HISTORY_FILE" ]] && touch "$PACKAGES_HISTORY_FILE"
+
+# create a file in the root of the project to store history of installed apps
+[[ ! -f "$APP_HISTORY_FILE" ]] && touch "$APP_HISTORY_FILE"
+
+# start services
+PHP_V=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')
+run_check source "$SHARED_SCRIPTS_DIR/start-service" "apache2"
+run_check source "$SHARED_SCRIPTS_DIR/start-service" "mysql"
+run_check source "$SHARED_SCRIPTS_DIR/start-service" "php$PHP_V-fpm"
+
+# check dependencies
+run_check source "$SHARED_SCRIPTS_DIR/check-php-modules"
+run_check source "$SHARED_SCRIPTS_DIR/check-php-consistency"
+run_check source "$SHARED_SCRIPTS_DIR/check-apache2-modrewrite"
+
+# start framework selector and configure path for framework specific utilities
+source "$SHARED_SCRIPTS_DIR/select-installation"
+INSTALLATION_PATH="$ROOT_DIR/modules/$FRAMEWORK/scripts"
+FRAMEWORK_LISTS_DIR="$ROOT_DIR/modules/$FRAMEWORK/data-lists"
+FRAMEWORK_SNIPPETS_DIR="$ROOT_DIR/modules/$FRAMEWORK/lib/snippets"
+
+########################################################    start user input
+
+# prompt for git params
+source "$SHARED_SCRIPTS_DIR/git-init-configuration"
+
+# prompt for projectname and set root directory
+source "$SHARED_SCRIPTS_DIR/prompt-and-check-projectname"
+PROJECT_ROOT="/var/www/$PROJECT_NAME"
+
+# prompt for additional packages
+source "$SHARED_SCRIPTS_DIR/select-additional-packages"
+
+if [[ $RE_RUN = "true" ]]; then
+    source "$SHARED_SCRIPTS_DIR/run-update-flow"
+fi
+
+########################################################  start installer
+
+# setup summary
+gum style \
+  --border double \
+  --padding "1 2" \
+  --align center \
+  --width 100 \
+  --border-foreground 212 \
+  --foreground 212 \
+  "This bash script sets up a local development environment featuring :" \
+  "" \
+  "Laravel & Livewire" \
+  "MySQL database with a dedicated user" \
+  "Test environment with in-memory SQLite (for this showcase)" \
+  "Apache vhost with logs linked to Laravel's storage/logs directory" \
+  "Custom daily logging" \
+  "Installation of additional packages & post-install actions" \
+  "Continuous Integration setup & GitHub deployment" \
+  "" \
+  "Please refer to the README.md file for more information"
+
+# install database and user
+run_step source "$SHARED_SCRIPTS_DIR/install-db-and-user.sh"
+# install framework
+cd /var/www || { error "Error: cannot find /var/www"; exit 1; }
+run_step source "$INSTALLATION_PATH/installer"
+cd "$PROJECT_ROOT" || { error "Error: cannot find project directory"; exit 1; }
+# set project permissions
+run_step source "$INSTALLATION_PATH/set-project-permissions"
+# configure db environment
+run_step source "$INSTALLATION_PATH/configure-db-environment"
+# configure test environment
+run_step source "$INSTALLATION_PATH/configure-test-environment"
+# configure app environment
+run_step source "$INSTALLATION_PATH/configure-app-environment"
+# configure logging
+run_step source "$INSTALLATION_PATH/configure-logging"
+# configure CI/CD
+run_step source "$INSTALLATION_PATH/set-project-ci-ready"
+# configure apache2 vhost
+run_step source "$INSTALLATION_PATH/install-apache-vhost"
+# create README.md
+run_step source "$SHARED_SCRIPTS_DIR/add-readme-file"
+# install additional packages
+run_step source "$SHARED_SCRIPTS_DIR/install-additional-packages"
+# show failed and manual actions or push the project to GitHub, if permissioned 
+if [ -s "/tmp/setup_todo_list" ]; then
+    TO_DO_LIST=$(cat /tmp/setup_todo_list)
+    gum style --border double --padding "1 2" "MANUAL ACTIONS:" "$TO_DO_LIST"
+
+    rm /tmp/setup_todo_list
+else
+    # push project to github if permissioned
+    if "${GIT_PARAMS[permission]}"; then
+        run_step source "$SHARED_SCRIPTS_DIR/git-init"
+    else
+        now=$(date +%s)
+        HISTORY_ENTRY="$PROJECT_NAME:$now:$SHARED_SCRIPTS_DIR/git-init:n"
+        echo "$HISTORY_ENTRY" >> "$APP_HISTORY_FILE"
+        warning "Project '$PROJECT_NAME' was not pushed to GitHub" 
+    fi
+fi
+
+MINUTES=$(( SECONDS / 60 ))
+SECONDS=$(( SECONDS % 60 ))
+
+info "This script ran for $MINUTES minutes and $SECONDS seconds"
+
+add_to_windows_hosts_file "$SERVER_NAME"
+
+exit 0

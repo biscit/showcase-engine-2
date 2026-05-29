@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# create temporary file
+WEB_FILE="/var/www/html/sys_check.php"
+echo "<?php echo PHP_VERSION;" | sudo tee $WEB_FILE > /dev/null
+
+# get php versions
+CLI_VER=$(php -r 'echo PHP_VERSION;' 2>/dev/null)
+WEB_VER=$(curl -s --fail http://127.0.0.1/sys_check.php)
+
+# remove temporary file
+sudo rm $WEB_FILE
+
+if [ -z "$WEB_VER" ]; then
+    message="Cannot retrieve PHP version through apache2."
+    return 1
+fi
+
+echo "    CLI PHP: $CLI_VER"
+echo "    Web PHP: $WEB_VER"
+
+if [ "$CLI_VER" != "$WEB_VER" ]; then
+    warning "$(basename "${BASH_SOURCE[0]}")" "Web uses $WEB_VER and CLI uses $CLI_VER !"
+else
+    message="Web uses $WEB_VER and CLI uses $CLI_VER !"
+fi
+
+return 0
