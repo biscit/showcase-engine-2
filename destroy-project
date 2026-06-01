@@ -1,0 +1,94 @@
+#!/bin/bash
+
+# Standalone usage
+usage() {
+    gum style --foreground 212 --border normal --padding "0 1" \
+        "Arguments are missing" "" \
+        "Use: ${0##*/} <project_name>" ""
+    exit 1
+}
+
+# Check arguments
+[ -z "$1" ] && usage
+
+PROJECT_NAME=$1
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+HEADER_TEXT="This script:
+- Removes the directory /var/www/$PROJECT_NAME
+- Drops its database
+- Removes its Apache vhost
+- Deletes the GitHub repository
+- Deletes the history in .installed_apps.log and .installed_packages.log files
+- Removes the server name from the windows hosts file
+
+Are you sure you want to destroy '$PROJECT_NAME'? This is irreversible !!"
+
+if gum confirm --affirmative "Destroy it !" --negative "Let me think about it !" --default=false "$HEADER_TEXT"; then
+    # 1. Remove project folder
+    echo "    Removing project directory..."
+    sudo rm -rf "/var/www/$PROJECT_NAME"
+
+    # 2. Remove database and User
+    DB_NAME=$(echo "$PROJECT_NAME" | tr '-' '_')"_db"
+    DB_USER=$(echo "$PROJECT_NAME" | tr '-' '_')
+    echo "    Dropping database $DB_NAME and user $DB_USER..."
+    sudo mysql -e "DROP DATABASE IF EXISTS $DB_NAME; DROP USER IF EXISTS '$DB_USER'@'127.0.0.1'; FLUSH PRIVILEGES;"
+
+    # 3. Remove Apache Vhost
+    SERVER_NAME="${PROJECT_NAME}.local"
+    echo "    Removing Apache vhost '$SERVER_NAME'..."
+    sudo a2dissite "$SERVER_NAME.conf" &>/dev/null
+    sudo rm -f "/etc/apache2/sites-available/$SERVER_NAME.conf"
+    sudo rm -f "/etc/apache2/sites-enabled/$SERVER_NAME.conf"
+    sudo systemctl reload apache2
+
+    # 4. Remove from github
+    if gh repo view "$PROJECT_NAME" &>/dev/null; then
+        gh repo delete "$PROJECT_NAME" --yes
+    else
+        echo "    No repository found on Github with the name '$PROJECT_NAME', skipped deleting..."
+    fi
+
+    # 5. Remove project installation details
+    if [ -f "$SCRIPT_DIR/.installed_apps.log" ]; then
+        echo "    Removing history for '$PROJECT_NAME'..."
+        sed -i "/^$PROJECT_NAME/d" "$SCRIPT_DIR/.installed_apps.log"
+    fi
+
+    if [ -f "$SCRIPT_DIR/.installed_packages.log" ]; then
+        echo "    Removing package history for '$PROJECT_NAME'..."
+        sed -i "/^$PROJECT_NAME/d" "$SCRIPT_DIR/.installed_packages.log"
+    fi
+
+    # 6. Remove server_name from windows hosts file
+    win_hosts="C:\Windows\System32\drivers\etc\hosts"
+    lnx_hosts="/mnt/c/Windows/System32/drivers/etc/hosts"
+    
+    # temporary files in the Windows-temp folder
+    win_temp="C:\Windows\Temp\hosts_purged.txt"
+    lnx_temp="/mnt/c/Windows/Temp/hosts_purged.txt"
+    
+    # Check if the server name is in the file
+    if ! grep -qE "(^|\s)$SERVER_NAME(\s|$)" "$lnx_hosts"; then
+        echo "    Domain '$SERVER_NAME' doesn't exist in the Windows hosts-file."
+    else
+        echo "    Windows is trying to remove '$SERVER_NAME'..."
+
+        grep -vE "(^|\s)$SERVER_NAME(\s|$)" "$lnx_hosts" > "$lnx_temp"
+
+        # Execute PowerShell with Admin permissions
+        powershell.exe -Command "Start-Process powershell -ArgumentList '-NoProfile -Command \"\$lines = [IO.File]::ReadAllLines(''$win_temp''); Set-Content -Path ''$win_hosts'' -Value \$lines -Force; Remove-Item ''$win_temp'' -Force\"' -Verb RunAs -Wait"
+        # Check via Linux if entry is removed
+        if ! grep -qE "(^|\s)$SERVER_NAME(\s|$)" "$lnx_hosts"; then
+            echo "    Success : '$SERVER_NAME' is removed from the Windows hosts-file!"
+        else
+            # clean up
+            rm -f "$lnx_temp"
+            echo "    Error : could not remove '$SERVER_NAME' from the windows hosts-file"
+        fi
+    fi
+
+    echo "Project '$PROJECT_NAME' is destroyed. You can re-run the installer ('setup-project') with '$PROJECT_NAME'..."
+fi

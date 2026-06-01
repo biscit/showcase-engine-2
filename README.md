@@ -55,6 +55,19 @@ To ensure a seamless **"one-click-install"** within a WSL2 environment, several 
 
 Logs for the framework installation process are stored in /tmp/laravel_install.log and are automatically cleared upon the next run.
 
+## Cleanup & Uninstallation
+
+If you are finished testing and want to completely revert all changes made by the installer, you can use the standalone destroy script.
+
+This will safely and automatically remove the project directory, database, dedicated database user, Apache vhost configs, and clean up the Windows `hosts` file entries within a few seconds.
+
+Make the script executable and run it with the project name as an argument:
+
+```bash
+chmod +x destroy-project
+./destroy-project <project_name>
+```
+
 ---
 
 _Created as a showcase for Bash Scripting and DevOps automation._
