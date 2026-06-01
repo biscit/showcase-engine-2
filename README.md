@@ -34,6 +34,7 @@ To ensure a seamless **"one-click-install"** within a WSL2 environment, several 
 ## Project Structure
 
 - `setup-project`: The main entry point (orchestrator)
+- `destroy-project`: Script to uninstall project directory, database, dedicated database user, vhost configs and cleans up windows hosts file
 - `modules/shared/lib/functions`: Core functions
 - `modules/shared/scripts`: Core shared utility scripts
 - `modules/shared/data-lists`: External configuration files for package management (keeping code DRY)
